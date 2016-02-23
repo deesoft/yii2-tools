@@ -1,7 +1,7 @@
 {
     "name": "deesoft/yii2-tools",
     "description": "Yii2 application tools",
-    "keywords": ["yii2", "state"],
+    "keywords": ["yii2", "state", "event"],
     "type": "yii2-extension",
     "license": "BSD-3-Clause",
     "support": {
