@@ -23,6 +23,7 @@
         }
     },
     "extra": {
+        "bootstrap": "dee\\tools\\Bootstrap",
         "branch-alias": {
             "dev-master": "1.x-dev"
         }
