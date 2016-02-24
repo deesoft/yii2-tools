@@ -29,15 +29,19 @@ class State extends Object
     protected function buildKey()
     {
         if ($this->_key === null) {
-            $key = md5(microtime(true) . mt_rand(0, 1000000));
-            $id = Yii::$app->request->cookies->getValue($this->cookieKey, $key);
-            
-            $cookie = new Cookie([
-                'name' => $this->cookieKey,
-                'value' => $id,
-                'expire' => time() + 30 * 24 * 3600,
-            ]);
-            Yii::$app->response->cookies->add($cookie);
+            if (Yii::$app instanceof \yii\web\Application) {
+                $key = md5(microtime(true) . mt_rand(0, 1000000));
+                $id = Yii::$app->request->cookies->getValue($this->cookieKey, $key);
+
+                $cookie = new Cookie([
+                    'name' => $this->cookieKey,
+                    'value' => $id,
+                    'expire' => time() + 30 * 24 * 3600,
+                ]);
+                Yii::$app->response->cookies->add($cookie);
+            } else {
+                $id = md5(Yii::$app->basePath);
+            }
             $this->_states['id'] = $id;
             $this->_key = [__CLASS__, Yii::$app->id, $id];
         }
