@@ -17,9 +17,6 @@ use yii\db\AfterSaveEvent;
  */
 class StateChangeBehavior extends Behavior
 {
-    const BEFORE = 'before';
-    const AFTER = 'after';
-
     /**
      *
      * @var string
@@ -30,7 +27,7 @@ class StateChangeBehavior extends Behavior
      *
      * @var string
      */
-    public $whenInsert = self::BEFORE;
+    public $whenInsert = ActiveRecord::EVENT_AFTER_INSERT;
 
     /**
      * Status state, [old_status, new_status, handler]
@@ -49,8 +46,7 @@ class StateChangeBehavior extends Behavior
     public function events()
     {
         return[
-            ActiveRecord::EVENT_BEFORE_INSERT => 'onInsert',
-            ActiveRecord::EVENT_AFTER_INSERT => 'onInsert',
+            $this->whenInsert => 'onInsert',
             ActiveRecord::EVENT_BEFORE_UPDATE => 'onUpdate',
             ActiveRecord::EVENT_BEFORE_DELETE => 'onDelete',
         ];
@@ -67,10 +63,6 @@ class StateChangeBehavior extends Behavior
      */
     public function onInsert($event)
     {
-        if ($this->whenInsert == self::BEFORE && $event->name == ActiveRecord::EVENT_AFTER_INSERT ||
-            $this->whenInsert != self::BEFORE && $event->name == ActiveRecord::EVENT_BEFORE_INSERT) {
-            return;
-        }
         if ($this->_status === null) {
             $this->_status = true;
         }
