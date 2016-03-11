@@ -78,8 +78,8 @@ class StateChangeBehavior extends Behavior
                             $event->isValid = false;
                         }
                         $this->_status = false;
+                        return;
                     }
-                    return;
                 }
             }
         }
@@ -105,8 +105,8 @@ class StateChangeBehavior extends Behavior
                     if ($result === false) {
                         $event->isValid = false;
                         $this->_status = false;
-                    }
-                    return;
+                        return;
+                    }                    
                 }
             }
         }
@@ -129,8 +129,8 @@ class StateChangeBehavior extends Behavior
                     if ($result === false) {
                         $event->isValid = false;
                         $this->_status = false;
+                        return;
                     }
-                    return;
                 }
             }
         }
