@@ -85,6 +85,29 @@ class DeeModel extends DynamicModel
             return parent::__call($name, $params);
         }
     }
+
+    /**
+     * @inheritdoc
+     */
+    public function __get($name)
+    {
+        if (in_array($name, $this->attributes()) || !array_key_exists('get' . ucfirst($name), $this->_methods)) {
+            return parent::__get($name);
+        }
+        return Yii::$container->invoke($this->_methods['get' . ucfirst($name)], [$this]);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function __set($name, $value)
+    {
+        if (in_array($name, $this->attributes()) || !array_key_exists('set' . ucfirst($name), $this->_methods)) {
+            parent::__set($name, $value);
+        } else {
+            return Yii::$container->invoke($this->_methods['set' . ucfirst($name)], [$this, $value]);
+        }
+    }
 }
 
 if (DeeModel::$defintions === null) {
