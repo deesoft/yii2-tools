@@ -22,13 +22,11 @@ class StateChangeBehavior extends Behavior
      * @var string
      */
     public $attribute = 'status';
-
     /**
      *
      * @var string
      */
     public $whenInsert = ActiveRecord::EVENT_AFTER_INSERT;
-
     /**
      * Status state, [old_status, new_status, handler]
      * ```
@@ -42,7 +40,11 @@ class StateChangeBehavior extends Behavior
      */
     public $states = [];
     private $_status;
+    private $_messages = [];
 
+    /**
+     * @inheritdoc
+     */
     public function events()
     {
         return[
@@ -52,9 +54,31 @@ class StateChangeBehavior extends Behavior
         ];
     }
 
+    /**
+     * Get status change
+     * @return boolean
+     */
     public function getStateChanged()
     {
         return $this->_status;
+    }
+
+    /**
+     * Get status change message.
+     * @return string
+     */
+    public function getStateMessage()
+    {
+        return reset($this->_messages);
+    }
+
+    /**
+     * Add state change message.
+     * @param string $message
+     */
+    public function addStateMessage($message)
+    {
+        $this->_messages[] = $message;
     }
 
     /**
@@ -66,6 +90,7 @@ class StateChangeBehavior extends Behavior
         if ($this->_status === null) {
             $this->_status = true;
         }
+        $this->_messages = [];
         $model = $this->owner;
         $attribute = $this->attribute;
         if (($new = $model->$attribute) != null) {
@@ -76,6 +101,13 @@ class StateChangeBehavior extends Behavior
                     if ($result === false) {
                         if ($event instanceof ModelEvent) {
                             $event->isValid = false;
+                        } else {
+                            if (count($this->_messages)) {
+                                $message = $this->_messages[0];
+                            } else {
+                                $message = is_string($state[2]) ? "Error at '{$state[2]}'" : 'Error after insert';
+                            }
+                            throw new StateChangeException($message);
                         }
                         $this->_status = false;
                         return;
@@ -106,7 +138,7 @@ class StateChangeBehavior extends Behavior
                         $event->isValid = false;
                         $this->_status = false;
                         return;
-                    }                    
+                    }
                 }
             }
         }
