@@ -4,10 +4,12 @@ namespace dee\tools;
 
 use Yii;
 use yii\base\Object;
-use yii\caching\Cache;
 use yii\di\Instance;
 use yii\web\Cookie;
 use yii\base\InvalidCallException;
+use yii\db\Connection;
+use yii\db\Query;
+use yii\web\Application as WebApplication;
 
 /**
  * Description of State
@@ -17,52 +19,104 @@ use yii\base\InvalidCallException;
  */
 class State extends Object
 {
-    private $_key;
-    private $_states;
+    /**
+     * @var Connection 
+     */
+    public $db = 'db';
+    /**
+     * @var string table name
+     */
+    public $tableName = '{{%dee_client}}';
+    /**
+     * @var string table name
+     */
+    public $cliFileKey = '@runtime/dee_client_id.data';
+    /**
+     * @var string
+     */
+    public $cookieKey = 'dee_state_id';
+    /**
+     * @var array
+     */
+    protected $_states;
+    /**
+     * @var integer
+     */
+    private $_id;
 
     /**
-     * @var Cache
+     * @inheritdoc
      */
-    public $cache = 'cache';
-    public $cookieKey = 'dee_state_id';
-
-    protected function buildKey()
+    public function init()
     {
-        if ($this->_key === null) {
-            if (Yii::$app instanceof \yii\web\Application) {
-                $key = md5(microtime(true) . mt_rand(0, 1000000));
-                $id = Yii::$app->request->cookies->getValue($this->cookieKey, $key);
+        $this->db = Instance::ensure($this->db, Connection::className());
+        $this->createTable();
 
-                $cookie = new Cookie([
-                    'name' => $this->cookieKey,
-                    'value' => $id,
-                    'expire' => time() + 30 * 24 * 3600,
-                ]);
-                Yii::$app->response->cookies->add($cookie);
-            } else {
-                $id = md5(Yii::$app->basePath);
-            }
-            $this->_states['id'] = $id;
-            $this->_key = [__CLASS__, Yii::$app->id, $id];
+        if (Yii::$app instanceof WebApplication) {
+            $id = Yii::$app->getRequest()->getCookies()->getValue($this->cookieKey);
+        } else {
+            $file = Yii::getAlias($this->cliFileKey);
+            $id = is_file($file) ? (int) file_get_contents($file) : null;
         }
-        return $this->_key;
+        if ($id === null || !is_numeric($id) || ($this->_states = $this->getData($id)) === false) {
+            $primary = $this->db->getSchema()->insert($this->tableName, [
+                'create_at' => time(),
+            ]);
+            $id = $primary['id'];
+            $this->_states = [];
+        }
+
+        if (Yii::$app instanceof WebApplication) {
+            $cookie = new Cookie([
+                'name' => $this->cookieKey,
+                'value' => $id,
+                'expire' => time() + 30 * 24 * 3600,
+            ]);
+            Yii::$app->getResponse()->getCookies()->add($cookie);
+        } elseif (isset($file)) {
+            file_put_contents($file, $id, LOCK_EX);
+        }
+        $this->_states['id'] = $this->_id = $id;
     }
 
-    protected function initState()
+    /**
+     * Create table if not exists
+     */
+    protected function createTable()
     {
-        if ($this->_states === null) {
-            $this->cache = Instance::ensure($this->cache, Cache::className());
-            $this->_states = $this->cache->get($this->buildKey());
-            if ($this->_states === false) {
-                $this->_states = [];
-            }
+        if ($this->db->getSchema()->getTableSchema($this->tableName) === null) {
+            $this->db->createCommand()
+                ->createTable($this->tableName, [
+                    'id' => 'pk',
+                    'created_at' => 'integer',
+                    'updated_at' => 'integer',
+                    'data' => 'binary',
+                ])->execute();
         }
     }
 
-    public function get($name)
+    protected function getData($id)
     {
-        $this->initState();
-        return array_key_exists($name, $this->_states) ? $this->_states[$name] : null;
+        $data = (new Query())->select(['data'])
+                ->from($this->tableName)
+                ->where(['id' => $id])->scalar();
+        if ($data !== false) {
+            return empty($data) ? [] : unserialize($data);
+        }
+        return false;
+    }
+
+    protected function save()
+    {
+        $this->db->createCommand()->update($this->tableName, [
+            'updated_at' => time(),
+            'data' => [serialize($this->_states), \PDO::PARAM_LOB],
+            ], ['id' => $this->_id])->execute();
+    }
+
+    public function get($name, $default = null)
+    {
+        return array_key_exists($name, $this->_states) ? $this->_states[$name] : $default;
     }
 
     public function __get($name)
@@ -75,9 +129,8 @@ class State extends Object
         if ($name == 'id') {
             throw new InvalidCallException('Setting read-only property: ' . get_class($this) . '::' . $name);
         }
-        $this->initState();
         $this->_states[$name] = $value;
-        $this->cache->set($this->buildKey(), $this->_states);
+        $this->save();
     }
 
     public function __set($name, $value)
@@ -87,13 +140,11 @@ class State extends Object
 
     public function __isset($name)
     {
-        $this->initState();
         return isset($this->_states[$name]);
     }
 
     public function states($states = null)
     {
-        $this->initState();
         if ($states === null) {
             return $this->_states;
         } else {
@@ -101,7 +152,7 @@ class State extends Object
             foreach ($states as $key => $value) {
                 $this->_states[$key] = $value;
             }
-            $this->cache->set($this->buildKey(), $this->_states);
+            $this->save();
         }
     }
 }
