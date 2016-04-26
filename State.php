@@ -60,7 +60,7 @@ class State extends Object
         }
         if ($id === null || !is_numeric($id) || ($this->_states = $this->getData($id)) === false) {
             $primary = $this->db->getSchema()->insert($this->tableName, [
-                'create_at' => time(),
+                'created_at' => time(),
             ]);
             $id = $primary['id'];
             $this->_states = [];
@@ -95,6 +95,11 @@ class State extends Object
         }
     }
 
+    /**
+     * Get saved profile of the client
+     * @param integer $id
+     * @return boolean|array
+     */
     protected function getData($id)
     {
         $data = (new Query())->select(['data'])
@@ -106,6 +111,9 @@ class State extends Object
         return false;
     }
 
+    /**
+     * Save client's profile to database
+     */
     protected function save()
     {
         $this->db->createCommand()->update($this->tableName, [
@@ -114,16 +122,33 @@ class State extends Object
             ], ['id' => $this->_id])->execute();
     }
 
+    /**
+     * Get profile
+     * @param string $name
+     * @param mixed $default
+     * @return mixed
+     */
     public function get($name, $default = null)
     {
         return array_key_exists($name, $this->_states) ? $this->_states[$name] : $default;
     }
 
+    /**
+     * Getter of profile
+     * @param string $name
+     * @return mixed
+     */
     public function __get($name)
     {
         return $this->get($name);
     }
 
+    /**
+     * Set the profile
+     * @param string $name
+     * @param mixed $value
+     * @throws InvalidCallException
+     */
     public function set($name, $value)
     {
         if ($name == 'id') {
@@ -133,16 +158,31 @@ class State extends Object
         $this->save();
     }
 
+    /**
+     * Setter of profile
+     * @param string $name
+     * @param mixed $value
+     */
     public function __set($name, $value)
     {
         $this->set($name, $value);
     }
 
+    /**
+     * Check if isset
+     * @param string $name
+     * @return boolean
+     */
     public function __isset($name)
     {
         return isset($this->_states[$name]);
     }
 
+    /**
+     * Get or set profiles
+     * @param array $states
+     * @return array
+     */
     public function states($states = null)
     {
         if ($states === null) {
