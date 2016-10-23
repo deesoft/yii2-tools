@@ -84,7 +84,7 @@ class State extends Object
      */
     protected function createTable()
     {
-        if ($this->db->getSchema()->getTableSchema($this->tableName) === null) {
+        if ($this->db->getTableSchema($this->tableName) === null) {
             $this->db->createCommand()
                 ->createTable($this->tableName, [
                     'id' => 'pk',
@@ -92,6 +92,7 @@ class State extends Object
                     'updated_at' => 'integer',
                     'data' => 'binary',
                 ])->execute();
+            $this->db->getTableSchema($this->tableName, true);
         }
     }
 
